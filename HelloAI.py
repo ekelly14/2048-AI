@@ -37,28 +37,32 @@ class GameState:
     # Cycle the spawnPool
     self.spawnPool.append(self.spawnPool.pop(0))
   
+  def combineValues(self, arr):
+    counter = 0
+    #for each value
+    for i in range(0, len(arr)-1):
+      if i > len(arr)-1 or i+1 > len(arr)-1:
+        break
+      #if the shifted values are the same, combine them
+      if arr[i] == arr[i+1]:
+        arr[i] *= 2
+        arr.pop(i+1)
+        counter+= 1
+    return counter
+
   #Perform a left shift on the game grid
   def leftShift(self):
-    for r in self.gameGrid:
-      counter = 0
-      #Determine the number of shifts to perform
-      for i in range(len(r)):
-          if r[i] == 0:
-            counter += 1
-      #Remove zeros from row
-      r[:] = [x for x in r if x != 0]
-      #Loop over & Combine numbers
-      if(len(r) > 1):
-        counter2 = 0
-        for i in range(0, len(r)-1):
-          if(r[i-counter2] == r[i+1-counter2]):
-            r[i]=r[i]*2
-            counter2 += (1)
-            r.pop(i-2)
-            counter += 1
-      #Append zeros
-      for i in range(counter):
-        r.append(0)
+    tempState = copy.deepcopy(self.gameGrid)
+    for i in range(0, self.y):
+      #remove zeros form array
+      self.gameGrid[i] = list(filter(lambda num: num != 0, self.gameGrid[i]))
+      #combine values 
+      k = self.combineValues(self.gameGrid[i])
+      #reapply values
+      for j in range(0, (self.y)-(len(self.gameGrid[i]))):
+        self.gameGrid[i].append(0)
+    if self.gameGrid == tempState:
+      return
     #Spawn new tile
     self.generateTile()
     #Add to the process string
@@ -66,24 +70,20 @@ class GameState:
 
   #Perform a right shift on the grid
   def rightShift(self):
-    for r in self.gameGrid:
-      counter = 0
-      #Find number of shifts to perform
-      for i in range(len(r)):
-          if r[i] == 0:
-            counter += 1
-      #remove shifts
-      r[:] = [x for x in r if x != 0]
-      #combine same numbers
-      if(len(r) > 1):
-        for i in range(len(r)-1, 0, -1):
-          if(r[i] == r[i-1]):
-            r[i]=r[i]*2
-            r.pop(i-1)
-            counter += 1
-      #Append zeroes to fill row
-      for i in range(counter):
-        r.insert(0,0)
+    tempState = copy.deepcopy(self.gameGrid)
+    for i in range(0, self.y):
+      #remove zeros from list
+      self.gameGrid[i] = list(filter(lambda num: num != 0, self.gameGrid[i]))
+      #reverse so the same combine function can be used
+      self.gameGrid[i].reverse()
+      k = self.combineValues(self.gameGrid[i])
+      #re-reverse
+      self.gameGrid[i].reverse()
+      #replace values
+      for j in range(0, (self.y)-(len(self.gameGrid[i]))):
+        self.gameGrid[i].insert(0, 0)
+    if self.gameGrid == tempState:
+      return
     #Spawn new tile
     self.generateTile()
     #Add process to the path string
@@ -91,31 +91,27 @@ class GameState:
 
   #perform an up shift on the entire grid
   def upShift(self):
+    tempState = copy.deepcopy(self.gameGrid)
     for i in range(0, self.x):
-      colCount = i
-      zeroCount = 0
-      colTemp = []
-      for r in self.gameGrid:
-        #Count the number of zeros and save the order of the non-zeros
-        if r[colCount] == 0:
-          zeroCount += 1
-        else:
-          colTemp.append(r[colCount])
-      #Combine same numbers
-      if(len(colTemp) > 1):
-        counter2 = 0
-        for i in range(0, len(colTemp)-1):
-          if(colTemp[i-counter2] == colTemp[i+1-counter2]):
-            colTemp[i-counter2]=colTemp[i-counter2]*2
-            colTemp.pop(i+1-counter2)
-            counter2 += 1
-            zeroCount += 1
-      #Append zeros to the end of array
-      for i in range(zeroCount):
-        colTemp.append(0)
-      #edit each column for the shifted values
-      for r in self.gameGrid:
-        r[colCount] = colTemp.pop(0)
+      downarr = []
+      #formulate an array from the columns
+      for j in range(0, self.y):
+        downarr.append(self.gameGrid[j][i])
+        #remove zeros
+      downarr = list(filter(lambda num: num != 0, downarr))
+      #reverse so the function can be used
+      downarr.reverse()
+      k = self.combineValues(downarr)
+      #reinsert the zeros
+      for j in range(0, (self.y)-(len(downarr))):
+        downarr.insert(0, 0)
+      #re-reverse
+      downarr.reverse()
+      #reinsert values to grid
+      for j in range(0, self.y):
+        self.gameGrid[j][i] = downarr[j]
+    if self.gameGrid == tempState:
+      return
     #Spawn new tile
     self.generateTile()
     #Append the process to the processString
@@ -123,29 +119,24 @@ class GameState:
   
   #perform a down shift on the grid
   def downShift(self):
+    tempState = copy.deepcopy(self.gameGrid)
     for i in range(0, self.x):
-      colCount = i
-      zeroCount = 0
-      colTemp = []
-      for r in self.gameGrid:
-        #Count the number of zeros and save the order of the non-zeros
-        if r[colCount] == 0:
-          zeroCount += 1
-        else:
-          colTemp.append(r[colCount])
-      #Combine same numbers
-      if(len(colTemp) > 1):
-        for i in range(len(colTemp)-1, 0, -1):
-          if(colTemp[i] == colTemp[i-1]):
-            colTemp[i]=colTemp[i]*2
-            colTemp.pop(i-1)
-            zeroCount += 1
-      #append zeros to beginning
-      for i in range(zeroCount):
-        colTemp.insert(0, 0)
-      #edit each column to the shifted values
-      for r in self.gameGrid:
-        r[colCount] = colTemp.pop(0)
+      downarr = []
+      #formulate an array with the correct column values
+      for j in range(0, self.y):
+        downarr.append(self.gameGrid[j][i])
+      #remove zeros
+      downarr = list(filter(lambda num: num != 0, downarr))
+      #combine values
+      k = self.combineValues(downarr)
+      #readd zeros
+      for j in range(0, (self.y)-(len(downarr))):
+        downarr.insert(0, 0)
+      #reapply values to grid
+      for j in range(0, self.y):
+        self.gameGrid[j][i] = downarr[j]
+    if self.gameGrid == tempState:
+      return
     #Spawn new tile
     self.generateTile()
     #Append the process to the processString
@@ -163,7 +154,7 @@ class GameState:
   #simple function to output the grid in it's current state
   def printState(self):
     print(len(self.processString))
-    print("Process: " + self.processString)
+    print(self.processString)
     for r in self.gameGrid:
       for i in r:
         print(i, end=' ')
@@ -195,7 +186,6 @@ for i in range(0, height):
 
 #Create a game object with the input
 game = GameState(tempgrid, pattern)
-
 
 #BFTS Algorithm implementation
 start = timer()
