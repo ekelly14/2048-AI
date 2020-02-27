@@ -1,5 +1,4 @@
 import sys
-import copy
 from timeit import default_timer as timer
 
 class GameState:
@@ -10,6 +9,11 @@ class GameState:
     self.y = len(inputGrid)     #the width of the board 
     self.spawnPool = inputPool  #The array of the spawn pattern
     self.processString = ""     #A string keeping track of the path
+
+  def fast_copy(self):
+    copy_object = GameState([list(x) for x in self.gameGrid], [x for x in self.spawnPool])
+    copy_object.processString = self.processString
+    return copy_object
 
   #Generate a new tile in the grid
   def generateTile(self):
@@ -52,7 +56,7 @@ class GameState:
 
   #Perform a left shift on the game grid
   def leftShift(self):
-    tempState = copy.deepcopy(self.gameGrid)
+    tempState = self.fast_copy()
     for i in range(0, self.y):
       #remove zeros form array
       self.gameGrid[i] = list(filter(lambda num: num != 0, self.gameGrid[i]))
@@ -70,7 +74,7 @@ class GameState:
 
   #Perform a right shift on the grid
   def rightShift(self):
-    tempState = copy.deepcopy(self.gameGrid)
+    tempState = self.fast_copy()
     for i in range(0, self.y):
       #remove zeros from list
       self.gameGrid[i] = list(filter(lambda num: num != 0, self.gameGrid[i]))
@@ -91,7 +95,7 @@ class GameState:
 
   #perform an up shift on the entire grid
   def upShift(self):
-    tempState = copy.deepcopy(self.gameGrid)
+    tempState = self.fast_copy()
     for i in range(0, self.x):
       downarr = []
       #formulate an array from the columns
@@ -119,7 +123,7 @@ class GameState:
   
   #perform a down shift on the grid
   def downShift(self):
-    tempState = copy.deepcopy(self.gameGrid)
+    tempState = self.fast_copy()
     for i in range(0, self.x):
       downarr = []
       #formulate an array with the correct column values
@@ -159,6 +163,71 @@ class GameState:
       for i in r:
         print(i, end=' ')
       print()
+  
+def DFS(state, depth):
+  if depth == 0:
+    #Check for win if at depth
+    if state.isWin() == True:
+      #If this node is a winner, return!
+      return True, state
+    #We are at depth, but there still might be children
+    else:
+      return True, None
+
+  #We are not at depth
+  elif depth > 0: 
+    #Generate all children
+    any_remaining = False
+    children = []
+
+    #the leftshift child
+    leftState = state.fast_copy()
+    leftState.leftShift()
+    children.append(leftState)
+
+    #the right shift child
+    rightState = state.fast_copy()
+    rightState.rightShift()
+    children.append(rightState)
+
+    #the down shift child
+    downState = state.fast_copy()
+    downState.downShift()
+    children.append(downState)
+
+    #the up shift child
+    upState = state.fast_copy()
+    upState.upShift()
+    children.append(upState)
+
+    #for all children, run DFS at max depth-1
+    for i in children:
+      remaining, found = DFS(i, depth-1)
+      #if a state is returned (not null), that is the winner
+      if(found is not None):
+        return True, found
+      #If there are children remaining still
+      if remaining:
+        any_remaining = True
+    #return to let IDDFS to run at another depth
+    return any_remaining, None
+  
+def IDDFS(state):
+  done = False  #Keep deepning until True
+  depth = 1     #Keep track of the depth
+  while(not done):
+    #print(depth) #Used for debugging
+    #Run DFS on the current node and specified depth
+    remaining, found = DFS(state, depth)
+    #If the win-state is found, return it!
+    if(found is not None):
+      done = True 
+      return found
+    #Else, if there are no more child nodes, return failed
+    elif(not remaining):
+      return None
+    #increment depth 
+    depth += 1
 
 #open the input file
 f = open(sys.argv[1])
@@ -187,37 +256,16 @@ for i in range(0, height):
 #Create a game object with the input
 game = GameState(tempgrid, pattern)
 
-#BFTS Algorithm implementation
+#Get Start time
 start = timer()
 fullstart = start
-isSolved = False
-queue = []
-while(not isSolved):
-  isSolved = game.isWin()
-  if(isSolved):
-    break
 
-  leftGame = copy.deepcopy(game)
-  leftGame.leftShift()
-  queue.append(leftGame)
+#Run algorithm
+finalNode = IDDFS(game)
 
-  rightGame = copy.deepcopy(game)
-  rightGame.rightShift()
-  queue.append(rightGame)
+#Get finish time
+end = timer()
 
-  downGame = copy.deepcopy(game)
-  downGame.downShift()
-  queue.append(downGame)
-
-  upGame = copy.deepcopy(game)
-  upGame.upShift()
-  queue.append(upGame)
-
-  game = queue[0]
-  queue.pop(0)
-
-
-if(isSolved):
-  end = timer()
-  print(int(1000 * (end - fullstart)))
-  game.printState()
+#Output results
+print(int(1000 * (end - fullstart)))
+finalNode.printState()
